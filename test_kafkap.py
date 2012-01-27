@@ -36,7 +36,10 @@ class TestKafkaPool(mox.MoxTestBase):
 
         self.mox.ReplayAll()
 
-        p = kafkap.KafkaPool(['localhost:9092'])
+        # Must set connection_factory since KafkaPool.connection_factory is
+        # still the unmocked (real) class
+        p = kafkap.KafkaPool(['localhost:9092'],
+                connection_factory=kafkap.KafkaConnection)
         p.send('message1', 'topic1')
         p.sendmulti(['message2'], 'topic2')
 
@@ -51,31 +54,47 @@ class TestKafkaPool(mox.MoxTestBase):
 
         # Send 2 has troubles but makes it
         conn.validate().AndReturn(True)
-        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION)\
-                .AndRaise(socket.error('wat'))
+        err = socket.error('wat')
+        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION).AndRaise(err)
+        conn.handle_exception(err)
+        conn.validate().AndReturn(False)
         conn = kafkap.KafkaConnection('a', 1)
-        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION)\
-                .AndRaise(socket.timeout('timed out'))
+
+        err = socket.timeout('timed out')
+        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION).AndRaise(err)
+        conn.handle_exception(err)
+        conn.validate().AndReturn(False)
+
         conn = kafkap.KafkaConnection('b', 2)
         conn.send(['2'], '2', kafkap.DEFAULT_PARTITION)
 
         self.mox.ReplayAll()
 
-        p = kafkap.KafkaPool(['a:1', 'b:2'], send_attempts=3)
+        p = kafkap.KafkaPool(['a:1', 'b:2'], send_attempts=3,
+                connection_factory=kafkap.KafkaConnection)
         p.send('1', '1', kafkap.DEFAULT_PARTITION)
         p.send('2', '2', kafkap.DEFAULT_PARTITION)
 
     def test_send_failure(self):
+        err = socket.error('mockymockmox')
         conn = kafkap.KafkaConnection('c', 3)
-        conn.send(['1'], '1', 1).AndRaise(socket.error())
+        conn.send(['1'], '1', 1).AndRaise(err)
+        conn.handle_exception(err)
+        conn.validate().AndReturn(False)
+
         conn = kafkap.KafkaConnection('b', 2)
-        conn.send(['1'], '1', 1).AndRaise(socket.error())
+        conn.send(['1'], '1', 1).AndRaise(err)
+        conn.handle_exception(err)
+        conn.validate().AndReturn(False)
+
         conn = kafkap.KafkaConnection('a', 1)
-        conn.send(['1'], '1', 1).AndRaise(socket.error())
+        conn.send(['1'], '1', 1).AndRaise(err)
+        conn.handle_exception(err)
 
         self.mox.ReplayAll()
 
-        p = kafkap.KafkaPool(['a:1', 'b:2', 'c:3'], send_attempts=3)
+        p = kafkap.KafkaPool(['a:1', 'b:2', 'c:3'], send_attempts=3,
+                connection_factory=kafkap.KafkaConnection)
         self.assertRaises(kafkap.KafkaSendFailure, p.send, '1', '1', 1)
 
 
