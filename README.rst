@@ -7,7 +7,8 @@ Goals
 -----
 
 * Producer only
-* Simple single Connection API
+* Works as well for single connections as many connections in a threaded
+  environment
 * Connection Pooling
 * Defensive network coding (short timeouts, tcp keepalives, connection
   recycling)
@@ -17,13 +18,11 @@ Goals
 FAQ
 ---
 
-Q. Why the stupid name?
+Why the stupid name?
+    So we don't try to make it do more than we need. Who's going to try to bolt
+    a consumer onto something with an ugly name like "pykafkap"?
 
-A. So we don't try to make it do more than we need. Who's going to try to bolt
-   a consumer onto something with an ugly name like "pykafkap"?
 
-
-Q. Yeah, but then why did you name the module "kafkap.py"?
-
-A. Putting "py" in the name of a Python module is redundant. Putting "py" in
-   the name of a project namespaces it. See Q1.
+Yeah, but then why did you name the module "kafkap.py"?
+    Putting "py" in the name of a Python module is redundant. Putting "py" in
+    the name of a project namespaces it. See Q1.
