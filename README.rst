@@ -20,6 +20,7 @@ Usage
 -----
 
 ::
+
     import kafkap
 
     kp = kafkap.KafkaPool(['server1:9092', 'server2:9092'])
