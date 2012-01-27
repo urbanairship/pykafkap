@@ -26,8 +26,8 @@ CandidatePool = collections.deque
 ConnectionPool = queue.Queue
 DEFAULT_POOL_MAX = 10
 DEFAULT_POOL_TIMEOUT = 2
-DEFAULT_CONNECT_RETRIES = 2
-DEFAULT_SEND_RETRIES = 2
+DEFAULT_CONNECT_ATTEMPTS = 2
+DEFAULT_SEND_ATTEMPTS = 2
 
 # Connection defaults
 DEFAULT_MAX_IDLE = 60
@@ -92,22 +92,27 @@ class KafkaPool(object):
      * Lazily creates connections up to a maximum
      * Retries servers on faults
 
-     `connect_retries` is the number of times to try to connect to the *entire*
-     list of hosts. Likewise `send_retries` is the number of times to retry
-     sends to the *entire* list of hosts.
+     `connect_attempts` is the number of times to try to connect to the
+     *entire* list of hosts. Likewise `send_attempts` is the number of times to
+     retry sends to the *entire* list of hosts.
     """
-    def __init__(self, hosts, connect_retries=DEFAULT_CONNECT_RETRIES,
+    def __init__(self, hosts, connect_attempts=DEFAULT_CONNECT_ATTEMPTS,
                  max_size=DEFAULT_POOL_MAX, pool_timeout=DEFAULT_POOL_TIMEOUT,
-                 producer_settings=None, send_retries=DEFAULT_SEND_RETRIES):
-        random.shuffle(hosts)
-        self.candidate_pool = CandidatePool(hosts, maxlen=len(hosts))
+                 producer_settings=None, send_attempts=DEFAULT_SEND_ATTEMPTS):
+        cleaned_hosts = []
+        for host_pair in hosts:
+            host, port = host_pair.split(':')
+            cleaned_hosts.append((host, int(port)))
+        random.shuffle(cleaned_hosts)
+        self.candidate_pool = CandidatePool(
+            cleaned_hosts, maxlen=len(cleaned_hosts))
         self.connection_pool = ConnectionPool(maxsize=max_size)
         self.pool_timeout = pool_timeout
         self.max_size = max_size
         self.full = False
         self.producer_settings = producer_settings or {}
-        self.connect_retries = range(connect_retries)
-        self.send_retries = range(send_retries)
+        self.connect_attempts = range(connect_attempts)
+        self.send_attempts = range(send_attempts)
 
     def _connect(self):
         """Create a new connection, retrying servers on failures
@@ -119,16 +124,16 @@ class KafkaPool(object):
         # Rotate candidate pool so next connect starts on a different host
         self.candidate_pool.rotate(1)
         candidates = list(self.candidate_pool)
-        for attempt in self.connect_retries:
-            for candidate in candidates:
-                host, port = candidate.split(':')
+        for attempt in self.connect_attempts:
+            for host, port in candidates:
                 try:
-                    return KafkaProducer(host, port, **self.producer_settings)
+                    return KafkaConnection(
+                            host, port, **self.producer_settings)
                 except socket.error:
                     continue
         raise KafkaConnectionFailure(
             "Failed to connect to any Kafka servers after %d attempts on %r" %
-            (len(self.connect_retries), candidates))
+            (len(self.connect_attempts), candidates))
 
     def _get(self):
         """Get a connection from the pool, creating a new one if necessary
@@ -181,19 +186,13 @@ class KafkaPool(object):
             producer.close()
 
     def send(self, message, topic, partition=DEFAULT_PARTITION):
-        """Send a message to Kafka
-
-        Can block up to (send_retries * producer_timeout * )
-        """
+        """Send a message to Kafka"""
         return self.sendmulti([message], topic, partition)
 
     def sendmulti(self, messages, topic, partition=DEFAULT_PARTITION):
-        """Send multiple messages to Kafka
-
-        Can block up to (send_retries * producer_timeout * )
-        """
+        """Send multiple messages to Kafka"""
         e = None
-        for attempt in self.send_retries:
+        for attempt in self.send_attempts:
             conn = self._get()
             try:
                 conn.send(messages, topic, partition)
@@ -207,12 +206,12 @@ class KafkaPool(object):
             # for-loop exited meaning attempts were exhausted
             raise KafkaSendFailure(
                     'Failed to send message to topic %s after %d attempts. '
-                    'Final exception: %s' % (topic, len(self.send_retries), e))
+                    'Last exception: %s' % (topic, len(self.send_attempts), e))
 
         self._put(conn)
 
 
-class KafkaProducer(object):
+class KafkaConnection(object):
     """Kafka Producer Connection (no error handling)"""
     def __init__(self, host='localhost', port=9092,
                  max_idle=DEFAULT_MAX_IDLE, tcp_keepalives=True,
