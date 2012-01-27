@@ -15,6 +15,22 @@ Goals
 * Kafka 0.05 and 0.6 support
 * Python 2.6 & 2.7 support (PyPy is bonus)
 
+
+Usage
+-----
+
+::
+    import kafkap
+
+    kp = kafkap.KafkaPool(['server1:9092', 'server2:9092'])
+    kp.send('this is a message!', 'TOPIC_TOPIC')
+    kp.sendmulti(['message 1', 'message 2'], 'TOPIC_B')
+
+    try:
+        kp.send('please work', 'BROKEN_TOPIC')
+    except kafkap.KafkaException:
+        print 'Oh no! All send attempts exhausted and none worked!'
+
 FAQ
 ---
 
