@@ -140,7 +140,6 @@ class KiddiePool(object):
         try:
             yield conn
         except Exception as e:
-            print repr(e)
             conn.handle_exception(e)
             raise
         finally:

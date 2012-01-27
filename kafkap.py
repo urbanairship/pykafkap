@@ -143,10 +143,8 @@ class KafkaPool(kiddiepool.KiddiePool):
     def sendmulti(self, messages, topic, partition=DEFAULT_PARTITION):
         """Send multiple messages to Kafka"""
         e = None
-        print 'sending'
         for attempt in self.send_attempts:
             try:
-                print attempt
                 with self.connection() as conn:
                     conn.send(messages, topic, partition)
             except socket.error:
