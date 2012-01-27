@@ -12,6 +12,7 @@ Goals
 * Defensive network coding (short timeouts, tcp keepalives, connection
   recycling)
 * Kafka 0.05 and 0.6 support
+* Python 2.6 & 2.7 support (PyPy is bonus)
 
 FAQ
 ---
