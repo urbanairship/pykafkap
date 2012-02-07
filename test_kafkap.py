@@ -54,32 +54,30 @@ class TestKafkaPool(mox.MoxTestBase):
         c.sendmulti(['message2'], 'topic2')
 
     def test_send_retries(self):
+        conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
         # Send 1 goes out ok
-        conn = kafkap.KafkaConnection('b', 2)
-        conn.send(['1'], '1', kafkap.DEFAULT_PARTITION)
+        conn1.validate().AndReturn(False)
+        conn1.connect('b', 2).AndReturn(True)
+        conn1.sendall(mox.IgnoreArg())
 
         # Send 2 has troubles but makes it
-        conn.validate().AndReturn(True)
-        err = socket.error('wat')
-        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION).AndRaise(err)
-        conn.handle_exception(err)
-        conn.validate().AndReturn(False)
-        conn = kafkap.KafkaConnection('a', 1)
+        conn2.validate().AndReturn(False)
+        conn2.connect('a', 1).AndReturn(True)
+        err2 = socket.timeout('timed out')
+        conn2.sendall(mox.IgnoreArg()).AndRaise(err2)
+        conn2.handle_exception(err2)
 
-        err = socket.timeout('timed out')
-        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION).AndRaise(err)
-        conn.handle_exception(err)
-        conn.validate().AndReturn(False)
-
-        conn = kafkap.KafkaConnection('b', 2)
-        conn.send(['2'], '2', kafkap.DEFAULT_PARTITION)
+        conn3.validate().AndReturn(False)
+        conn3.connect('b', 2).AndReturn(True)
+        conn3.sendall(mox.IgnoreArg())
 
         self.mox.ReplayAll()
 
-        p = kafkap.KafkaPool(['a:1', 'b:2'], send_attempts=3,
-                connection_factory=kafkap.KafkaConnection)
-        p.send('1', '1', kafkap.DEFAULT_PARTITION)
-        p.send('2', '2', kafkap.DEFAULT_PARTITION)
+        p = kiddiepool.KiddiePool(['a:1', 'b:2'], max_size=3,
+                connection_factory=kiddiepool.KiddieConnection)
+        c = kafkap.KafkaClient(p, send_attempts=3)
+        c.send('1', '1', kafkap.DEFAULT_PARTITION)
+        c.send('2', '2', kafkap.DEFAULT_PARTITION)
 
     def test_send_failure(self):
         err = socket.error('mockymockmox')
