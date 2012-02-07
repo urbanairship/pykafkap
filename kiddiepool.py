@@ -95,7 +95,6 @@ class KiddieConnection(object):
         """Close connection on socket errors"""
         if isinstance(e, socket.error):
             self.close()
-            return True
 
     def validate(self):
         """Returns True if connection is still valid, otherwise False
