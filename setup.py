@@ -11,5 +11,6 @@ setup(
     description='A simple Kafka producer client for Python.',
     long_description=open('README.rst').read(),
     py_modules=['kafkap'],
+    test_suite='test_kafkap',
     classifiers=['License :: OSI Approved :: Apache Software Licens'],
 )

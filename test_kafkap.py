@@ -5,47 +5,53 @@ import unittest
 import mox
 
 import kafkap
+import kiddiepool
 
 
 class TestKafkaPool(mox.MoxTestBase):
 
     def setUp(self):
         super(TestKafkaPool, self).setUp()
-        self.mox.StubOutClassWithMocks(kafkap, 'KafkaConnection')
+        self.mox.StubOutClassWithMocks(kiddiepool, 'KiddieConnection')
         self.mox.StubOutWithMock(random, 'shuffle')
         random.shuffle(mox.IgnoreArg())
 
     def test_hosts(self):
         self.mox.ReplayAll()
 
-        self.assertRaises(Exception, kafkap.KafkaPool, ['lolwut'])
-        self.assertRaises(Exception, kafkap.KafkaPool, 'lolwut')
-        self.assertRaises(Exception, kafkap.KafkaPool, ['ok:123', None])
-        self.assertRaises(Exception, kafkap.KafkaPool, ['nope:123:'])
-        p = kafkap.KafkaPool(['a:1', 'b:2'])
+        self.assertRaises(Exception, kiddiepool.KiddiePool, ['lolwut'])
+        self.assertRaises(Exception, kiddiepool.KiddiePool, 'lolwut')
+        self.assertRaises(Exception, kiddiepool.KiddiePool, ['ok:123', None])
+        self.assertRaises(Exception, kiddiepool.KiddiePool, ['nope:123:'])
+        p = kiddiepool.KiddiePool(['a:1', 'b:2'])
         #XXX Testing implementation details
         self.assertTrue(('a', 1) in list(p.candidate_pool))
         self.assertTrue(('b', 2) in list(p.candidate_pool))
         self.assertEqual(len(p.candidate_pool), 2)
 
     def test_basic_send(self):
-        conn = kafkap.KafkaConnection('localhost', 9092)
-        conn.send(['message1'], 'topic1', kafkap.DEFAULT_PARTITION)
+        conn = kiddiepool.KiddieConnection()
+
+        conn.validate().AndReturn(False)
+        conn.connect('localhost', 9092).AndReturn(True)
+        payload1 = kafkap.encode_produce_request(
+                'topic1', kafkap.DEFAULT_PARTITION, ['message1'])
+        conn.sendall(payload1)
+
         conn.validate().AndReturn(True)
-        conn.send(['message2'], 'topic2', kafkap.DEFAULT_PARTITION)
+        payload2 = kafkap.encode_produce_request(
+                'topic2', kafkap.DEFAULT_PARTITION, ['message2'])
+        conn.sendall(payload2)
 
         self.mox.ReplayAll()
 
         # Must set connection_factory since KafkaPool.connection_factory is
         # still the unmocked (real) class
-        p = kafkap.KafkaPool(['localhost:9092'],
-                connection_factory=kafkap.KafkaConnection)
-        p.send('message1', 'topic1')
-        p.sendmulti(['message2'], 'topic2')
-
-        self.assertFalse(p.full)
-        #XXX Testing implementation details
-        self.assertEqual(p.connection_pool.qsize(), 1)
+        p = kiddiepool.KiddiePool(['localhost:9092'], max_size=1,
+                connection_factory=kiddiepool.KiddieConnection)
+        c = kafkap.KafkaClient(p)
+        c.send('message1', 'topic1')
+        c.sendmulti(['message2'], 'topic2')
 
     def test_send_retries(self):
         # Send 1 goes out ok
@@ -77,25 +83,29 @@ class TestKafkaPool(mox.MoxTestBase):
 
     def test_send_failure(self):
         err = socket.error('mockymockmox')
-        conn = kafkap.KafkaConnection('c', 3)
-        conn.send(['1'], '1', 1).AndRaise(err)
-        conn.handle_exception(err)
-        conn.validate().AndReturn(False)
 
-        conn = kafkap.KafkaConnection('b', 2)
-        conn.send(['1'], '1', 1).AndRaise(err)
-        conn.handle_exception(err)
-        conn.validate().AndReturn(False)
+        conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
+        conn1.validate().AndReturn(False)
+        conn1.connect('c', 3).AndReturn(True)
+        conn1.sendall(mox.IgnoreArg()).AndRaise(err)
+        conn1.handle_exception(err)
 
-        conn = kafkap.KafkaConnection('a', 1)
-        conn.send(['1'], '1', 1).AndRaise(err)
-        conn.handle_exception(err)
+        conn2.validate().AndReturn(False)
+        conn2.connect('b', 2).AndReturn(True)
+        conn2.sendall(mox.IgnoreArg()).AndRaise(err)
+        conn2.handle_exception(err)
+
+        conn3.validate().AndReturn(False)
+        conn3.connect('a', 1).AndReturn(True)
+        conn3.sendall(mox.IgnoreArg()).AndRaise(err)
+        conn3.handle_exception(err)
 
         self.mox.ReplayAll()
 
-        p = kafkap.KafkaPool(['a:1', 'b:2', 'c:3'], send_attempts=3,
-                connection_factory=kafkap.KafkaConnection)
-        self.assertRaises(kafkap.KafkaSendFailure, p.send, '1', '1', 1)
+        p = kiddiepool.KiddiePool(['a:1', 'b:2', 'c:3'], max_size=3,
+                connection_factory=kiddiepool.KiddieConnection)
+        c = kafkap.KafkaClient(p, send_attempts=3)
+        self.assertRaises(kafkap.KafkaSendFailure, c.send, '1', '1', 1)
 
 
 class TestKafkaEncoding(unittest.TestCase):
@@ -119,3 +129,7 @@ class TestKafkaEncoding(unittest.TestCase):
         )
         for args, bits in tests:
             self.assertEqual(kafkap.encode_produce_request(*args), bits)
+
+
+if __name__ == '__main__':
+    unittest.main()
