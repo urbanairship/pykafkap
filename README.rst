@@ -24,6 +24,7 @@ as intended for Kafka.
 
 
 ::
+
     import kiddiepool
     import kafkap
     pool = kiddiepool.KiddiePool(['localhost:9092'])
