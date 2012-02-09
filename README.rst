@@ -19,18 +19,15 @@ Goals
 Usage
 -----
 
+WIP - Should subclass KiddiePool and KiddieConnection to make sure they behave
+as intended for Kafka.
+
 ::
-
+    import kiddiepool
     import kafkap
-
-    kp = kafkap.KafkaPool(['server1:9092', 'server2:9092'])
-    kp.send('this is a message!', 'TOPIC_TOPIC')
-    kp.sendmulti(['message 1', 'message 2'], 'TOPIC_B')
-
-    try:
-        kp.send('please work', 'BROKEN_TOPIC')
-    except kafkap.KafkaException:
-        print 'Oh no! All send attempts exhausted and none worked!'
+    pool = kiddiepool.KiddiePool(['localhost:9092'])
+    client = kafkap.KafkaClient(pool)
+    client.send('message', 'topic')
 
 FAQ
 ---
