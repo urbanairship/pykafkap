@@ -22,12 +22,14 @@ Usage
 WIP - Should subclass KiddiePool and KiddieConnection to make sure they behave
 as intended for Kafka.
 
+
 ::
     import kiddiepool
     import kafkap
     pool = kiddiepool.KiddiePool(['localhost:9092'])
     client = kafkap.KafkaClient(pool)
     client.send('message', 'topic')
+
 
 FAQ
 ---
