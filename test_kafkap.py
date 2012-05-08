@@ -56,16 +56,16 @@ class TestKafkaPool(mox.MoxTestBase):
     def test_send_retries(self):
         conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
         # Send 1 goes out ok
-        conn1.validate().AndReturn(False)
-        conn1.connect('b', 2).AndReturn(True)
-        conn1.sendall(mox.IgnoreArg())
+        conn3.validate().AndReturn(False)
+        conn3.connect('b', 2).AndReturn(True)
+        conn3.sendall(mox.IgnoreArg())
 
         # Send 2 has troubles but makes it
-        conn2.validate().AndReturn(False)
-        conn2.connect('a', 1).AndReturn(True)
+        conn3.validate().AndReturn(False)
+        conn3.connect('a', 1).AndReturn(True)
         err2 = socket.timeout('timed out')
-        conn2.sendall(mox.IgnoreArg()).AndRaise(err2)
-        conn2.handle_exception(err2)
+        conn3.sendall(mox.IgnoreArg()).AndRaise(err2)
+        conn3.handle_exception(err2)
 
         conn3.validate().AndReturn(False)
         conn3.connect('b', 2).AndReturn(True)
@@ -83,15 +83,15 @@ class TestKafkaPool(mox.MoxTestBase):
         err = socket.error('mockymockmox')
 
         conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
-        conn1.validate().AndReturn(False)
-        conn1.connect('c', 3).AndReturn(True)
-        conn1.sendall(mox.IgnoreArg()).AndRaise(err)
-        conn1.handle_exception(err)
+        conn3.validate().AndReturn(False)
+        conn3.connect('c', 3).AndReturn(True)
+        conn3.sendall(mox.IgnoreArg()).AndRaise(err)
+        conn3.handle_exception(err)
 
-        conn2.validate().AndReturn(False)
-        conn2.connect('b', 2).AndReturn(True)
-        conn2.sendall(mox.IgnoreArg()).AndRaise(err)
-        conn2.handle_exception(err)
+        conn3.validate().AndReturn(False)
+        conn3.connect('b', 2).AndReturn(True)
+        conn3.sendall(mox.IgnoreArg()).AndRaise(err)
+        conn3.handle_exception(err)
 
         conn3.validate().AndReturn(False)
         conn3.connect('a', 1).AndReturn(True)
