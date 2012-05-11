@@ -5,7 +5,7 @@ requirements = [l.strip() for l in open('requirements.txt').readlines()]
 setup(
     name='pykafkap',
     url='https://github.com/urbanairship/pykafkap',
-    version='0.1.5',
+    version='0.1.6',
     license='Apache',
     author='Michael Schurter',
     author_email='schmichael@urbanairship.com',
