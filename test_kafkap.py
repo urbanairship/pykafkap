@@ -65,7 +65,7 @@ class TestKafkaPool(mox.MoxTestBase):
         conn3.connect('a', 1).AndReturn(True)
         err2 = socket.timeout('timed out')
         conn3.sendall(mox.IgnoreArg()).AndRaise(err2)
-        conn3.handle_exception(err2)
+        conn3.handle_exception(type(err2), err2, mox.IgnoreArg())
 
         conn3.validate().AndReturn(False)
         conn3.connect('b', 2).AndReturn(True)
@@ -86,17 +86,17 @@ class TestKafkaPool(mox.MoxTestBase):
         conn3.validate().AndReturn(False)
         conn3.connect('c', 3).AndReturn(True)
         conn3.sendall(mox.IgnoreArg()).AndRaise(err)
-        conn3.handle_exception(err)
+        conn3.handle_exception(type(err), err, mox.IgnoreArg())
 
         conn3.validate().AndReturn(False)
         conn3.connect('b', 2).AndReturn(True)
         conn3.sendall(mox.IgnoreArg()).AndRaise(err)
-        conn3.handle_exception(err)
+        conn3.handle_exception(type(err), err, mox.IgnoreArg())
 
         conn3.validate().AndReturn(False)
         conn3.connect('a', 1).AndReturn(True)
         conn3.sendall(mox.IgnoreArg()).AndRaise(err)
-        conn3.handle_exception(err)
+        conn3.handle_exception(type(err), err, mox.IgnoreArg())
 
         self.mox.ReplayAll()
 
