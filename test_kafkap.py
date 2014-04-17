@@ -31,6 +31,8 @@ class TestKafkaPool(mox.MoxTestBase):
 
     def test_basic_send(self):
         conn = kiddiepool.KiddieConnection()
+        conn.host = 'localhost'
+        conn.port = 9092
 
         conn.validate().AndReturn(False)
         conn.connect('localhost', 9092).AndReturn(True)
@@ -55,6 +57,9 @@ class TestKafkaPool(mox.MoxTestBase):
 
     def test_send_retries(self):
         conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
+        conn3.host = 'a'
+        conn3.port = 1
+
         # Send 1 goes out ok
         conn3.validate().AndReturn(False)
         conn3.connect('b', 2).AndReturn(True)
@@ -83,6 +88,9 @@ class TestKafkaPool(mox.MoxTestBase):
         err = socket.error('mockymockmox')
 
         conn1, conn2, conn3 = [kiddiepool.KiddieConnection() for _ in '123']
+        conn3.host = 'a'
+        conn3.port = 1
+
         conn3.validate().AndReturn(False)
         conn3.connect('c', 3).AndReturn(True)
         conn3.sendall(mox.IgnoreArg()).AndRaise(err)
